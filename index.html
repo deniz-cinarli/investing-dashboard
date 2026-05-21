@@ -1,682 +1,510 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InvestBoard — My Investment Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.2.0/tabler-icons.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Stock Terminal</title>
 <style>
-  :root {
-    --bg:#0a0c10;--bg2:#11141b;--bg3:#181c26;
-    --border:#1e2330;--border2:#252c3d;
-    --text:#e8eaf0;--text2:#7c849a;--text3:#4a5168;
-    --accent:#4f8ef7;--green:#22c984;--red:#f2564d;--amber:#f5a623;--purple:#b06ef5;
-    --mono:'DM Mono',monospace;--sans:'Syne',sans-serif;
-    --radius:10px;--radius-sm:6px;
-  }
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;min-height:100vh;line-height:1.6}
-  header{border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;background:rgba(10,12,16,.96);backdrop-filter:blur(12px);z-index:100;gap:12px}
-  .logo{font-family:var(--sans);font-weight:800;font-size:18px;letter-spacing:-.5px;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
-  .logo span{-webkit-text-fill-color:var(--text2);font-weight:400;font-size:11px;margin-left:8px}
-  nav{display:flex;gap:4px;overflow-x:auto}
-  .nav-btn{background:none;border:none;color:var(--text2);font-family:var(--mono);font-size:12px;padding:7px 14px;border-radius:var(--radius-sm);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
-  .nav-btn:hover{color:var(--text);background:var(--bg3)}
-  .nav-btn.act{color:var(--accent);background:rgba(79,142,247,.1)}
-  main{padding:28px;max-width:1200px;margin:0 auto}
-  .tab{display:none}.tab.act{display:block}
-  .two-col{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:18px;align-items:start}
-  @media(max-width:800px){.two-col{grid-template-columns:1fr}.fg4{grid-template-columns:1fr 1fr!important}}
-  .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
-  .metric{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden}
-  .metric::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-  .metric.blue::before{background:var(--accent)}.metric.green::before{background:var(--green)}.metric.amber::before{background:var(--amber)}.metric.purple::before{background:var(--purple)}
-  .metric-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-  .metric-val{font-size:22px;font-weight:500;font-family:var(--sans);letter-spacing:-.5px}
-  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
-  .badge-up{background:rgba(34,201,132,.15);color:var(--green)}
-  .badge-dn{background:rgba(242,86,77,.15);color:var(--red)}
-  .badge-nu{background:var(--bg3);color:var(--text2)}
-  .badge-info{background:rgba(79,142,247,.15);color:var(--accent)}
-  .tcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
-  .tcard-head{padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-family:var(--sans);font-size:14px;font-weight:600;gap:8px;flex-wrap:wrap}
-  .tcard-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-  table{width:100%;border-collapse:collapse;table-layout:fixed}
-  th{font-size:10px;color:var(--text3);font-weight:500;padding:8px 10px;text-align:right;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap}
-  th.tl{text-align:left}
-  td{padding:10px 10px;text-align:right;border-bottom:1px solid var(--border);vertical-align:middle}
-  td.tl{text-align:left}
-  tr:last-child td{border-bottom:none}
-  tr:hover td{background:rgba(255,255,255,.02)}
-  input[type=text],input[type=number]{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;width:100%;transition:border-color .15s}
-  input::placeholder{color:var(--text3)}
-  input:focus{border-color:var(--accent)}
-  button{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;line-height:1}
-  button:hover{border-color:var(--accent);color:var(--accent)}
-  button.primary{background:rgba(79,142,247,.12);border-color:rgba(79,142,247,.3);color:var(--accent)}
-  button.primary:hover{background:rgba(79,142,247,.22)}
-  button.excel{background:rgba(34,201,132,.1);border-color:rgba(34,201,132,.25);color:var(--green)}
-  button.excel:hover{background:rgba(34,201,132,.2)}
-  button.danger{color:var(--text3);border-color:transparent;background:none;padding:4px 6px;font-size:14px}
-  button.danger:hover{color:var(--red);border-color:transparent}
-  button:disabled{opacity:.4;cursor:not-allowed}
-  .add-form{display:none;padding:14px 18px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border)}
-  .form-grid{display:grid;gap:8px;margin-bottom:10px}
-  .fg4{grid-template-columns:repeat(4,1fr)}.fg3{grid-template-columns:repeat(3,1fr)}.fg2{grid-template-columns:1fr 1fr}
-  .field-label{font-size:10px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
-  .err{font-size:11px;color:var(--red)}
-  .donut-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
-  .donut-card h3{font-family:var(--sans);font-size:14px;font-weight:600;margin-bottom:14px}
-  #alloc-legend{margin-top:14px;display:flex;flex-direction:column;gap:6px}
-  .legend-row{display:flex;justify-content:space-between;align-items:center;font-size:12px}
-  .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
-  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
-  .chip{padding:5px 13px;border:1px solid var(--border2);border-radius:20px;font-size:12px;cursor:pointer;background:none;color:var(--text2);font-family:var(--mono);transition:all .15s;line-height:1.4}
-  .chip:hover,.chip.sel{background:rgba(79,142,247,.12);border-color:rgba(79,142,247,.4);color:var(--accent)}
-  .news-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px}
-  .news-card:hover{border-color:var(--border2)}
-  .news-title{font-family:var(--sans);font-size:14px;font-weight:600;line-height:1.4;margin-bottom:6px}
-  .news-meta{font-size:11px;color:var(--text2);margin-bottom:8px}
-  .news-summary{font-size:12px;color:var(--text2);line-height:1.6}
-  .news-link{font-size:11px;color:var(--accent);display:inline-block;margin-top:8px;text-decoration:none}
-  .news-link:hover{text-decoration:underline}
-  .filing-header{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px}
-  .filing-name{font-family:var(--sans);font-size:18px;font-weight:700;letter-spacing:-.3px}
-  .filing-sub{font-size:12px;color:var(--text2);margin-top:3px}
-  .filing-notes{font-size:12px;color:var(--text2);margin-top:10px;line-height:1.6;border-top:1px solid var(--border);padding-top:10px}
-  .loader{text-align:center;padding:40px;color:var(--text2)}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .spin{animation:spin 1s linear infinite;display:inline-block}
-  .price-live{font-size:10px;color:var(--green);letter-spacing:.05em}
-  .price-stale{font-size:10px;color:var(--text3)}
-  .upside-pos{color:var(--green)}.upside-neg{color:var(--red)}
-  .search-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-  .search-row input{flex:1;min-width:180px}
-  .sec-title{font-family:var(--sans);font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px}
-  .empty{padding:40px;text-align:center;color:var(--text3);font-size:13px}
-  .port-total{font-family:var(--sans);font-size:38px;font-weight:700;letter-spacing:-1.5px}
-  .last-updated{font-size:10px;color:var(--text3);margin-top:6px}
-  .c-inc{background:rgba(34,201,132,.12);color:var(--green)}.c-dec{background:rgba(242,86,77,.12);color:var(--red)}.c-new{background:rgba(79,142,247,.12);color:var(--accent)}.c-unc{background:var(--bg3);color:var(--text2)}
-  footer{margin-top:60px;padding:20px 28px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
-  .page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:10px}
-  .page-title{font-family:var(--sans);font-size:22px;font-weight:700}
-  .page-sub{font-size:11px;color:var(--text2);margin-top:2px}
-  .page-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+a { text-decoration: none; }
+body { background: #070710; }
 </style>
 </head>
 <body>
-
-<header>
-  <div><span class="logo">InvestBoard<span>/ Personal Dashboard</span></span></div>
-  <nav>
-    <button class="nav-btn" id="nb-p" onclick="ST('p')"><i class="ti ti-chart-pie-2"></i> Portfolio</button>
-    <button class="nav-btn" id="nb-w" onclick="ST('w')"><i class="ti ti-eye"></i> Watchlist</button>
-    <button class="nav-btn" id="nb-n" onclick="ST('n')"><i class="ti ti-news"></i> News</button>
-    <button class="nav-btn" id="nb-f" onclick="ST('f')"><i class="ti ti-building-bank"></i> Investor Filings</button>
-  </nav>
-</header>
-
-<main>
-
-<!-- ══════════════ PORTFOLIO ══════════════ -->
-<section class="tab" id="tab-p">
-  <div style="margin-bottom:24px">
-    <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Total Portfolio Value</div>
-    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
-      <span class="port-total" id="ptv">$0.00</span>
-      <span class="badge" id="ptb"></span>
-    </div>
-    <div class="last-updated" id="p-updated"></div>
-  </div>
-  <div class="metric-grid">
-    <div class="metric blue"><div class="metric-label">Invested</div><div class="metric-val" id="pmc">—</div></div>
-    <div class="metric green"><div class="metric-label">Total Return</div><div class="metric-val" id="pmr">—</div></div>
-    <div class="metric amber"><div class="metric-label">Return %</div><div class="metric-val" id="pmp">—</div></div>
-    <div class="metric purple"><div class="metric-label">Positions</div><div class="metric-val" id="pmn">—</div></div>
-  </div>
-  <div class="two-col">
-    <div class="tcard">
-      <div class="tcard-head">
-        <span>Holdings</span>
-        <div class="tcard-actions">
-          <button id="pfetch-btn" onclick="fetchPrices('portfolio')"><i class="ti ti-refresh"></i> Live Prices</button>
-          <button class="excel" onclick="exportPortfolio()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
-          <button class="primary" onclick="togglePF()"><i class="ti ti-plus"></i> Add</button>
-        </div>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+const { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = Recharts;
+ 
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function calcMA(prices, period) {
+  return prices.map((_, i) => {
+    if (i < period - 1) return null;
+    const sum = prices.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+    return parseFloat((sum / period).toFixed(2));
+  });
+}
+ 
+function fmtTs(ts) {
+  return new Date(ts * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+ 
+function n(v, d = 2) {
+  if (v == null || isNaN(Number(v))) return "—";
+  return Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+ 
+async function askClaude(prompt) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  const data = await res.json();
+  return data.content.filter(b => b.type === "text").map(b => b.text).join("\n");
+}
+ 
+function parseJSON(text, arr = false) {
+  const m = text.match(arr ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/);
+  if (!m) throw new Error("No JSON in response");
+  return JSON.parse(m[0]);
+}
+ 
+// ── Constants ─────────────────────────────────────────────────────────────────
+const RANGES = ["1m", "3m", "6m", "1y", "2y", "5y"];
+const YF_R = { "1m": "1mo", "3m": "3mo", "6m": "6mo", "1y": "1y", "2y": "2y", "5y": "5y" };
+const YF_I = { "1m": "1d", "3m": "1d", "6m": "1d", "1y": "1d", "2y": "1wk", "5y": "1wk" };
+const FORMS = ["10-K", "10-Q", "8-K", "DEF 14A", "4", "S-1", "S-3"];
+const FORM_D = {
+  "10-K": "Annual Report", "10-Q": "Quarterly Report",
+  "8-K": "Current Report", "DEF 14A": "Proxy Statement",
+  "4": "Insider Trade", "S-1": "IPO Registration", "S-3": "Shelf Registration",
+};
+const FORM_C = {
+  "10-K": "#4488ff", "10-Q": "#00bcd4", "8-K": "#ff9500",
+  "DEF 14A": "#aa44ff", "4": "#ff4466", "S-1": "#00e676", "S-3": "#44cc88",
+};
+ 
+const C = {
+  green: "#00e676", red: "#ff4466", blue: "#4488ff",
+  amber: "#ff9500", purple: "#aa44ff", text: "#c8d0e0",
+  muted: "#505068", border: "#1c1c30", panel: "#0d0d1a", inp: "#101020",
+};
+ 
+// ── Main Component ─────────────────────────────────────────────────────────────
+function StockTerminal() {
+  const [input, setInput] = useState("AAPL");
+  const [ticker, setTicker] = useState("AAPL");
+  const [tab, setTab] = useState("overview");
+  const [range, setRange] = useState("1y");
+  const [showMA, setShowMA] = useState({ ma20: true, ma50: true, ma200: true });
+ 
+  const [price, setPrice] = useState(null);
+  const [chart, setChart] = useState(null);
+  const [news, setNews] = useState(null);
+  const [filings, setFilings] = useState(null);
+ 
+  const [pSt, setPSt] = useState("idle");
+  const [cSt, setCSt] = useState("idle");
+  const [nSt, setNSt] = useState("idle");
+  const [fSt, setFSt] = useState("idle");
+ 
+  const [pErr, setPErr] = useState("");
+  const [cErr, setCErr] = useState("");
+  const [nErr, setNErr] = useState("");
+  const [fErr, setFErr] = useState("");
+ 
+  // ── Loaders ──────────────────────────────────────────────────────────────────
+  const loadPrice = useCallback(async (sym) => {
+    setPSt("loading"); setPErr("");
+    try {
+      const raw = await askClaude(
+        `Search for current stock data for ticker ${sym}. Return ONLY raw JSON, no markdown backticks or explanation: ` +
+        `{"price":number,"change":number,"changePercent":number,"marketCap":"string","peRatio":"string",` +
+        `"high52w":number,"low52w":number,"volume":"string","avgVolume":"string","beta":"string",` +
+        `"eps":"string","dividendYield":"string","name":"string","exchange":"string","sector":"string"}`
+      );
+      setPrice(parseJSON(raw));
+      setPSt("done");
+    } catch (e) { setPErr(e.message); setPSt("error"); }
+  }, []);
+ 
+  const loadChart = useCallback(async (sym, r) => {
+    setCSt("loading"); setCErr(""); setChart(null);
+    const tryFetch = async (host) => {
+      const url = `${host}/v8/finance/chart/${sym}?interval=${YF_I[r]}&range=${YF_R[r]}&includePrePost=false`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    };
+    try {
+      let json;
+      try { json = await tryFetch("https://query1.finance.yahoo.com"); }
+      catch { json = await tryFetch("https://query2.finance.yahoo.com"); }
+      const result = json.chart?.result?.[0];
+      if (!result) throw new Error("No data returned");
+      const ts = result.timestamp;
+      const closes = result.indicators.quote[0].close;
+      const valid = ts.map((t, i) => ({ t, c: closes[i] })).filter(d => d.c != null);
+      const prices = valid.map(d => d.c);
+      const ma20 = calcMA(prices, 20);
+      const ma50 = calcMA(prices, 50);
+      const ma200 = calcMA(prices, 200);
+      setChart(valid.map((d, i) => ({
+        date: fmtTs(d.t),
+        price: parseFloat(d.c.toFixed(2)),
+        ma20: ma20[i], ma50: ma50[i], ma200: ma200[i],
+      })));
+      setCSt("done");
+    } catch (e) { setCErr(e.message); setCSt("error"); }
+  }, []);
+ 
+  const loadNews = useCallback(async (sym) => {
+    setNSt("loading"); setNErr("");
+    try {
+      const raw = await askClaude(
+        `Search for the 6 most recent important news articles about ${sym} stock from the last 2 weeks. ` +
+        `Include earnings, analysts, products, regulatory news. ` +
+        `Return ONLY a raw JSON array, no markdown: ` +
+        `[{"title":"string","source":"string","date":"string","summary":"2-3 sentences","sentiment":"positive|negative|neutral"}]`
+      );
+      setNews(parseJSON(raw, true));
+      setNSt("done");
+    } catch (e) { setNErr(e.message); setNSt("error"); }
+  }, []);
+ 
+  const loadFilings = useCallback(async (sym) => {
+    setFSt("loading"); setFErr("");
+    try {
+      const tr = await fetch("https://www.sec.gov/files/company_tickers.json");
+      if (!tr.ok) throw new Error("SEC EDGAR unreachable");
+      const tickers = await tr.json();
+      let cikRaw = null, cName = null;
+      for (const v of Object.values(tickers)) {
+        if (v.ticker.toLowerCase() === sym.toLowerCase()) {
+          cikRaw = v.cik_str; cName = v.title; break;
+        }
+      }
+      if (!cikRaw) throw new Error(`${sym} not found in SEC EDGAR`);
+      const cikPad = String(cikRaw).padStart(10, "0");
+      const sr = await fetch(`https://data.sec.gov/submissions/CIK${cikPad}.json`);
+      if (!sr.ok) throw new Error("Submissions fetch failed");
+      const sub = await sr.json();
+      const { form, filingDate, primaryDocument, accessionNumber } = sub.filings.recent;
+      const list = [];
+      for (let i = 0; i < form.length && list.length < 20; i++) {
+        if (FORMS.includes(form[i])) {
+          const acc = accessionNumber[i].replace(/-/g, "");
+          list.push({
+            form: form[i], date: filingDate[i], doc: primaryDocument[i],
+            url: `https://www.sec.gov/Archives/edgar/data/${cikRaw}/${acc}/${primaryDocument[i]}`,
+          });
+        }
+      }
+      setFilings({ name: cName, cik: cikRaw, list });
+      setFSt("done");
+    } catch (e) { setFErr(e.message); setFSt("error"); }
+  }, []);
+ 
+  // ── Effects ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    loadPrice("AAPL");
+    loadChart("AAPL", "1y");
+  }, []);
+ 
+  useEffect(() => {
+    if (tab === "news" && !news && nSt === "idle") loadNews(ticker);
+    if (tab === "filings" && !filings && fSt === "idle") loadFilings(ticker);
+  }, [tab]);
+ 
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+  const handleSearch = () => {
+    const sym = input.trim().toUpperCase();
+    if (!sym) return;
+    setTicker(sym);
+    setPrice(null); setChart(null); setNews(null); setFilings(null);
+    setPSt("idle"); setCSt("idle"); setNSt("idle"); setFSt("idle");
+    setPErr(""); setCErr(""); setNErr(""); setFErr("");
+    loadPrice(sym);
+    loadChart(sym, range);
+    if (tab === "news") loadNews(sym);
+    if (tab === "filings") loadFilings(sym);
+  };
+ 
+  const handleRange = (r) => {
+    setRange(r);
+    loadChart(ticker, r);
+  };
+ 
+  // ── Chart Tooltip ─────────────────────────────────────────────────────────────
+  const ChartTip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    const meta = {
+      price: { color: C.green, label: "Price" },
+      ma20:  { color: C.amber,  label: "MA20"  },
+      ma50:  { color: C.blue,   label: "MA50"  },
+      ma200: { color: C.purple, label: "MA200" },
+    };
+    return (
+      <div style={{ background: C.panel, border: `1px solid ${C.border}`, padding: "8px 12px", borderRadius: 4, fontSize: 11, fontFamily: "monospace" }}>
+        <div style={{ color: C.muted, marginBottom: 6, letterSpacing: 1 }}>{label}</div>
+        {payload.map(p => p.value != null && (
+          <div key={p.dataKey} style={{ color: meta[p.dataKey]?.color || p.color, marginBottom: 2 }}>
+            {meta[p.dataKey]?.label || p.dataKey}: <strong>${n(p.value)}</strong>
+          </div>
+        ))}
       </div>
-      <div class="add-form" id="padd">
-        <div class="form-grid fg4">
-          <div><div class="field-label">Ticker</div><input id="pt" type="text" placeholder="AAPL" style="text-transform:uppercase"></div>
-          <div><div class="field-label">Shares</div><input id="ps" type="number" placeholder="10" step="any"></div>
-          <div><div class="field-label">Avg Cost ($)</div><input id="pco" type="number" placeholder="150.00" step="any"></div>
-          <div><div class="field-label">Current Price ($)</div><input id="ppr" type="number" placeholder="or fetch live" step="any"></div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="primary" onclick="addH()"><i class="ti ti-device-floppy"></i> Save</button>
-          <span class="err" id="perr"></span>
-        </div>
+    );
+  };
+ 
+  const priceUp = !price || price.change >= 0;
+  const pColor = priceUp ? C.green : C.red;
+ 
+  // ── Render ────────────────────────────────────────────────────────────────────
+  return (
+    <div style={{ fontFamily: "'Courier New',Courier,monospace", color: C.text, background: "#070710", minHeight: "100vh" }}>
+ 
+      {/* ── Header ── */}
+      <div style={{ borderBottom: `1px solid ${C.border}`, padding: "11px 18px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#08080f" }}>
+        <span style={{ color: C.green, fontSize: 13, fontWeight: 700, letterSpacing: 4, marginRight: 6, whiteSpace: "nowrap" }}>◈ TERMINAL</span>
+        <input
+          value={input} maxLength={10} placeholder="TICKER"
+          onChange={e => setInput(e.target.value.toUpperCase())}
+          onKeyDown={e => e.key === "Enter" && handleSearch()}
+          style={{ background: C.inp, border: `1px solid ${C.border}`, color: C.text, fontFamily: "inherit", fontSize: 13, padding: "5px 10px", borderRadius: 3, outline: "none", width: 90, letterSpacing: 2 }}
+        />
+        <button onClick={handleSearch}
+          style={{ background: C.green, color: "#060610", border: "none", fontFamily: "inherit", fontSize: 10, fontWeight: 700, padding: "6px 14px", borderRadius: 3, cursor: "pointer", letterSpacing: 2 }}>
+          FETCH →
+        </button>
+        {pSt === "loading" && (
+          <span style={{ color: C.muted, fontSize: 10, letterSpacing: 2 }}>FETCHING...</span>
+        )}
+        {price && pSt === "done" && (
+          <span style={{ fontSize: 11, color: C.muted }}>
+            {ticker} · <span style={{ color: C.text }}>{price.name}</span> · {price.exchange}
+          </span>
+        )}
       </div>
-      <table>
-        <colgroup><col style="width:15%"><col style="width:11%"><col style="width:18%"><col style="width:18%"><col style="width:15%"><col style="width:14%"><col style="width:7%"><col style="width:4%"></colgroup>
-        <thead><tr>
-          <th class="tl" style="padding-left:18px">Ticker</th>
-          <th>Shares</th><th>Live Price</th><th>Value</th><th>Return</th><th>Day Change</th><th>Status</th><th></th>
-        </tr></thead>
-        <tbody id="phb"></tbody>
-      </table>
-      <div class="empty" id="pempty" style="display:none">No holdings yet. Add your first position above.</div>
-    </div>
-    <div class="donut-card">
-      <h3>Allocation</h3>
-      <div style="position:relative;height:180px"><canvas id="pac"></canvas></div>
-      <div id="alloc-legend"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════ WATCHLIST ══════════════ -->
-<section class="tab" id="tab-w">
-  <div class="page-header">
-    <div><div class="page-title">Watchlist</div><div class="page-sub">Track stocks you're monitoring</div></div>
-    <div class="page-actions">
-      <button id="wfetch-btn" onclick="fetchPrices('watchlist')"><i class="ti ti-refresh"></i> Live Prices</button>
-      <button class="excel" onclick="exportWatchlist()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
-      <button class="primary" onclick="toggleWF()"><i class="ti ti-plus"></i> Add stock</button>
-    </div>
-  </div>
-  <div class="tcard">
-    <div class="add-form" id="wadd" style="border-bottom:1px solid var(--border)">
-      <div class="form-grid fg4">
-        <div><div class="field-label">Ticker</div><input id="wti" type="text" placeholder="THYAO, AAPL…" style="text-transform:uppercase"></div>
-        <div><div class="field-label">Target Price ($)</div><input id="wtp" type="number" placeholder="200.00" step="any"></div>
-        <div><div class="field-label">Alert at (±%)</div><input id="wal" type="number" placeholder="5" step="any"></div>
-        <div><div class="field-label">Note / Thesis</div><input id="wtn" type="text" placeholder="Why you're watching…"></div>
+ 
+      {/* ── Tabs ── */}
+      <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, background: "#08080f", padding: "0 14px" }}>
+        {["overview", "chart", "news", "filings"].map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            style={{ padding: "10px 14px", fontSize: 10, letterSpacing: 2, cursor: "pointer", border: "none", background: "none", color: tab === t ? C.green : C.muted, borderBottom: tab === t ? `2px solid ${C.green}` : "2px solid transparent", fontFamily: "inherit" }}>
+            {t.toUpperCase()}
+          </button>
+        ))}
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="primary" onclick="addW()"><i class="ti ti-device-floppy"></i> Save</button>
-        <span class="err" id="werr"></span>
+ 
+      <div style={{ padding: "16px 18px" }}>
+ 
+        {/* ── OVERVIEW ── */}
+        {tab === "overview" && <>
+          {pSt === "error" && (
+            <div style={{ color: C.red, fontSize: 11, padding: 12, background: "#1a0008", border: "1px solid #330011", borderRadius: 4, marginBottom: 12 }}>
+              ⚠ {pErr}
+            </div>
+          )}
+          {pSt === "loading" && (
+            <div style={{ color: C.muted, fontSize: 11, padding: 30, textAlign: "center", letterSpacing: 2 }}>
+              ⬡ FETCHING PRICE DATA...
+            </div>
+          )}
+          {price && pSt === "done" && <>
+            {/* Price Banner */}
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 4, padding: "14px 18px", marginBottom: 12 }}>
+              <div style={{ fontSize: 9, color: C.muted, letterSpacing: 3, marginBottom: 8 }}>
+                LAST PRICE · {price.sector || ""}
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 36, color: C.text, fontWeight: 300 }}>${n(price.price)}</span>
+                <span style={{ fontSize: 16, color: pColor }}>
+                  {price.change >= 0 ? "+" : ""}{n(price.change)} ({price.change >= 0 ? "+" : ""}{n(price.changePercent)}%)
+                </span>
+              </div>
+            </div>
+            {/* Stats Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 8, marginBottom: 14 }}>
+              {[
+                ["MARKET CAP",  price.marketCap],
+                ["P/E RATIO",   price.peRatio],
+                ["52W HIGH",    `$${n(price.high52w)}`],
+                ["52W LOW",     `$${n(price.low52w)}`],
+                ["VOLUME",      price.volume],
+                ["AVG VOL",     price.avgVolume],
+                ["BETA",        price.beta],
+                ["EPS",         price.eps],
+                ["DIV YIELD",   price.dividendYield],
+              ].map(([label, val]) => (
+                <div key={label} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 4, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 9, color: C.muted, letterSpacing: 2, marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 14, color: C.text }}>{val || "—"}</div>
+                </div>
+              ))}
+            </div>
+          </>}
+        </>}
+ 
+        {/* ── CHART ── */}
+        {tab === "chart" && <>
+          {/* Controls */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+            {/* Range buttons */}
+            <div style={{ display: "flex", gap: 4 }}>
+              {RANGES.map(r => (
+                <button key={r} onClick={() => handleRange(r)}
+                  style={{ padding: "3px 10px", fontSize: 10, fontFamily: "inherit", letterSpacing: 1, cursor: "pointer", borderRadius: 3, border: `1px solid ${range === r ? C.green : C.border}`, background: range === r ? "#003316" : C.inp, color: range === r ? C.green : C.muted }}>
+                  {r.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <div style={{ width: 1, height: 18, background: C.border, margin: "0 4px" }} />
+            {/* MA toggles */}
+            {[["ma20", C.amber, "MA20"], ["ma50", C.blue, "MA50"], ["ma200", C.purple, "MA200"]].map(([key, color, label]) => (
+              <button key={key} onClick={() => setShowMA(m => ({ ...m, [key]: !m[key] }))}
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", background: showMA[key] ? `${color}18` : C.inp, border: `1px solid ${showMA[key] ? color : C.border}`, borderRadius: 3, cursor: "pointer", fontSize: 10, color: showMA[key] ? color : C.muted, fontFamily: "inherit", letterSpacing: 1 }}>
+                ● {label}
+              </button>
+            ))}
+          </div>
+ 
+          {cSt === "error" && (
+            <div style={{ color: C.red, fontSize: 11, padding: 12, background: "#1a0008", border: "1px solid #330011", borderRadius: 4, marginBottom: 12 }}>
+              ⚠ {cErr}
+              <button onClick={() => loadChart(ticker, range)}
+                style={{ marginLeft: 10, color: C.green, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 10 }}>
+                RETRY
+              </button>
+            </div>
+          )}
+          {cSt === "loading" && (
+            <div style={{ color: C.muted, fontSize: 11, padding: 30, textAlign: "center", letterSpacing: 2 }}>
+              ⬡ LOADING CHART DATA...
+            </div>
+          )}
+          {chart && cSt === "done" && (
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 4, padding: "16px 4px 0" }}>
+              <ResponsiveContainer width="100%" height={360}>
+                <ComposedChart data={chart} margin={{ top: 4, right: 16, bottom: 0, left: 8 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke="#16162a" vertical={false} />
+                  <XAxis dataKey="date"
+                    tick={{ fontSize: 10, fill: C.muted, fontFamily: "monospace" }}
+                    tickLine={false} axisLine={false}
+                    interval={Math.max(0, Math.floor(chart.length / 7) - 1)} />
+                  <YAxis domain={["auto", "auto"]}
+                    tick={{ fontSize: 10, fill: C.muted, fontFamily: "monospace" }}
+                    tickLine={false} axisLine={false}
+                    tickFormatter={v => `$${v}`} width={54} />
+                  <Tooltip content={<ChartTip />} />
+                  <Area dataKey="price" name="price" fill="rgba(0,230,118,0.07)" stroke={C.green} strokeWidth={1.5} dot={false} />
+                  {showMA.ma20  && <Line dataKey="ma20"  name="ma20"  stroke={C.amber}  strokeWidth={1.5} dot={false} connectNulls />}
+                  {showMA.ma50  && <Line dataKey="ma50"  name="ma50"  stroke={C.blue}   strokeWidth={1.5} dot={false} connectNulls />}
+                  {showMA.ma200 && <Line dataKey="ma200" name="ma200" stroke={C.purple} strokeWidth={1.5} dot={false} connectNulls />}
+                </ComposedChart>
+              </ResponsiveContainer>
+              {/* MA current values */}
+              <div style={{ display: "flex", gap: 16, padding: "10px 16px", borderTop: `1px solid ${C.border}`, fontSize: 11, flexWrap: "wrap" }}>
+                {[["MA20", "ma20", C.amber], ["MA50", "ma50", C.blue], ["MA200", "ma200", C.purple]].map(([label, key, color]) => {
+                  const last = [...chart].reverse().find(d => d[key] != null);
+                  return (
+                    <span key={key} style={{ color }}>
+                      {label}: <strong>${last ? n(last[key]) : "—"}</strong>
+                    </span>
+                  );
+                })}
+                <span style={{ color: C.muted }}>
+                  Current: <strong style={{ color: C.green }}>${n(chart[chart.length - 1]?.price)}</strong>
+                </span>
+              </div>
+            </div>
+          )}
+        </>}
+ 
+        {/* ── NEWS ── */}
+        {tab === "news" && <>
+          {nSt === "error" && (
+            <div style={{ color: C.red, fontSize: 11, padding: 12, background: "#1a0008", border: "1px solid #330011", borderRadius: 4, marginBottom: 12 }}>
+              ⚠ {nErr}
+              <button onClick={() => loadNews(ticker)}
+                style={{ marginLeft: 10, color: C.green, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 10 }}>
+                RETRY
+              </button>
+            </div>
+          )}
+          {nSt === "loading" && (
+            <div style={{ color: C.muted, fontSize: 11, padding: 30, textAlign: "center", letterSpacing: 2 }}>
+              ⬡ SEARCHING NEWS...
+            </div>
+          )}
+          {nSt === "idle" && !news && (
+            <div style={{ color: C.muted, fontSize: 11, padding: 30, textAlign: "center", letterSpacing: 2 }}>
+              ⬡ READY — ENTER A TICKER AND CLICK FETCH
+            </div>
+          )}
+          {news && nSt === "done" && news.map((item, i) => {
+            const sc = item.sentiment === "positive"
+              ? { bg: "#002e14", border: "#004d20", color: C.green }
+              : item.sentiment === "negative"
+              ? { bg: "#1a0008", border: "#330011", color: C.red }
+              : { bg: "#101020", border: C.border, color: C.muted };
+            return (
+              <div key={i} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 4, padding: 14, marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 2, letterSpacing: 1, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}` }}>
+                    {(item.sentiment || "neutral").toUpperCase()}
+                  </span>
+                  <span style={{ fontSize: 10, color: C.muted }}>{item.source} · {item.date}</span>
+                </div>
+                <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, marginBottom: 6 }}>{item.title}</div>
+                <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.7 }}>{item.summary}</div>
+              </div>
+            );
+          })}
+        </>}
+ 
+        {/* ── FILINGS ── */}
+        {tab === "filings" && <>
+          {fSt === "error" && (
+            <div style={{ color: C.red, fontSize: 11, padding: 12, background: "#1a0008", border: "1px solid #330011", borderRadius: 4, marginBottom: 12 }}>
+              ⚠ {fErr}
+              <button onClick={() => loadFilings(ticker)}
+                style={{ marginLeft: 10, color: C.green, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 10 }}>
+                RETRY
+              </button>
+            </div>
+          )}
+          {fSt === "loading" && (
+            <div style={{ color: C.muted, fontSize: 11, padding: 30, textAlign: "center", letterSpacing: 2 }}>
+              ⬡ QUERYING SEC EDGAR...
+            </div>
+          )}
+          {fSt === "idle" && !filings && (
+            <div style={{ color: C.muted, fontSize: 11, padding: 30, textAlign: "center", letterSpacing: 2 }}>
+              ⬡ READY — ENTER A TICKER AND CLICK FETCH
+            </div>
+          )}
+          {filings && fSt === "done" && (
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 4, padding: 16 }}>
+              <div style={{ fontSize: 9, color: C.muted, letterSpacing: 2, marginBottom: 14 }}>
+                {filings.name} · CIK {filings.cik} · {filings.list.length} FILINGS FOUND
+              </div>
+              {filings.list.map((f, i) => {
+                const fc = FORM_C[f.form] || C.muted;
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #111120" }}>
+                    <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 2, background: `${fc}18`, color: fc, border: `1px solid ${fc}40`, letterSpacing: 1, fontWeight: 700, minWidth: 52, textAlign: "center", whiteSpace: "nowrap" }}>
+                      {f.form}
+                    </span>
+                    <span style={{ fontSize: 10, color: C.muted, minWidth: 84 }}>{f.date}</span>
+                    <span style={{ fontSize: 11, color: C.text, flex: 1 }}>{FORM_D[f.form] || f.form}</span>
+                    <a href={f.url} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: 9, color: C.green, letterSpacing: 1, padding: "2px 8px", border: "1px solid #003316", borderRadius: 2, whiteSpace: "nowrap" }}>
+                      VIEW →
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>}
+ 
       </div>
     </div>
-    <div style="overflow-x:auto">
-      <table style="min-width:700px">
-        <colgroup><col style="width:10%"><col style="width:14%"><col style="width:12%"><col style="width:11%"><col style="width:12%"><col style="width:9%"><col style="width:8%"><col style="width:20%"><col style="width:4%"></colgroup>
-        <thead><tr>
-          <th class="tl" style="padding-left:18px">Ticker</th>
-          <th>Live Price</th><th>Target ($)</th><th>Upside</th><th>Day Chg</th>
-          <th>52W High</th><th>Alert (±%)</th><th class="tl">Note</th><th></th>
-        </tr></thead>
-        <tbody id="whb"></tbody>
-      </table>
-    </div>
-    <div class="empty" id="wempty">No stocks on your watchlist yet.</div>
-  </div>
-</section>
-
-<!-- ══════════════ NEWS ══════════════ -->
-<section class="tab" id="tab-n">
-  <div class="page-header">
-    <div><div class="page-title">Financial News</div><div class="page-sub">Reuters · Bloomberg · FT · WSJ · CNBC & more</div></div>
-    <button class="excel" id="news-export-btn" onclick="exportNews()" style="display:none"><i class="ti ti-file-spreadsheet"></i> Excel</button>
-  </div>
-  <div class="search-row">
-    <input id="nq" type="text" placeholder="Search: earnings, inflation, BIST, THYAO, Fed rates…" onkeydown="if(event.key==='Enter')FN(false)">
-    <button class="primary" onclick="FN(false)"><i class="ti ti-search"></i> Search</button>
-    <button onclick="FN(true)"><i class="ti ti-briefcase"></i> My portfolio news</button>
-  </div>
-  <div class="loader" id="nload" style="display:none">
-    <i class="ti ti-loader spin" style="font-size:26px"></i>
-    <p style="margin-top:12px;font-size:12px">Fetching latest news from credible sources…</p>
-  </div>
-  <div id="nres"></div>
-  <div class="empty" id="nempty">Search for a topic, ticker, or company — or click "My portfolio news".</div>
-</section>
-
-<!-- ══════════════ INVESTOR FILINGS ══════════════ -->
-<section class="tab" id="tab-f">
-  <div class="page-header">
-    <div><div class="page-title">Investor Filings</div><div class="page-sub">SEC 13F (US) · KAP (Turkey) · Latest disclosed holdings</div></div>
-    <button class="excel" id="filing-export-btn" onclick="exportFiling()" style="display:none"><i class="ti ti-file-spreadsheet"></i> Excel</button>
-  </div>
-  <div class="chips">
-    <button class="chip sel" id="rus" onclick="SR('us')">🇺🇸 United States — SEC 13F</button>
-    <button class="chip" id="rtr" onclick="SR('tr')">🇹🇷 Turkey — KAP</button>
-  </div>
-  <div id="fius"><div class="sec-title">Popular Investors</div><div class="chips" id="fusc"></div></div>
-  <div id="fitr" style="display:none"><div class="sec-title">Major Turkish Market Investors</div><div class="chips" id="ftrc"></div></div>
-  <div class="search-row">
-    <input id="fq" type="text" placeholder="Search any investor, fund, or company…" onkeydown="if(event.key==='Enter')FF()">
-    <button class="primary" onclick="FF()"><i class="ti ti-search"></i> Search filings</button>
-  </div>
-  <div class="loader" id="fload" style="display:none">
-    <i class="ti ti-loader spin" style="font-size:26px"></i>
-    <p style="margin-top:12px;font-size:12px">Searching SEC / KAP filings…</p>
-  </div>
-  <div id="fres"></div>
-  <div class="empty" id="fempty">Select an investor above or search to view their latest portfolio filing.</div>
-</section>
-
-</main>
-<footer>
-  <span>InvestBoard — free personal investing dashboard</span>
-  <span>Live prices via Yahoo Finance · AI news & filings · Not financial advice</span>
-</footer>
-
-<script>
-// ─── DATA ─────────────────────────────────────────────────────────────
-const COLS=['#4f8ef7','#22c984','#f2564d','#f5a623','#b06ef5','#e87040','#2ec4b6','#e040fb'];
-let H=[
-  {t:'AAPL',s:10,a:150,p:189.30,dayChange:0,dayChangePct:0,high52:0,live:false},
-  {t:'MSFT',s:5,a:280,p:420.50,dayChange:0,dayChangePct:0,high52:0,live:false},
-  {t:'NVDA',s:3,a:450,p:875.20,dayChange:0,dayChangePct:0,high52:0,live:false},
-  {t:'JPM',s:8,a:160,p:198.40,dayChange:0,dayChangePct:0,high52:0,live:false},
-  {t:'TSLA',s:6,a:240,p:178.50,dayChange:0,dayChangePct:0,high52:0,live:false}
-];
-let W=[];
-let region='us', selInv=null, pChart=null;
-let lastNewsData=[], lastFilingData=null;
-
-const US_INV=[
-  {n:'Warren Buffett',f:'Berkshire Hathaway'},{n:'Ray Dalio',f:'Bridgewater Associates'},
-  {n:'Bill Ackman',f:'Pershing Square'},{n:'Michael Burry',f:'Scion Asset Management'},
-  {n:'Cathie Wood',f:'ARK Invest'},{n:'George Soros',f:'Soros Fund Management'},
-  {n:'David Tepper',f:'Appaloosa Management'},{n:'Stan Druckenmiller',f:'Duquesne Family Office'},
-  {n:'Carl Icahn',f:'Icahn Enterprises'},{n:'Ken Griffin',f:'Citadel Advisors'},
-];
-const TR_INV=[
-  {n:'Koç Holding',f:'KAP Koç Group'},{n:'Sabancı Holding',f:'KAP Sabancı Group'},
-  {n:'Yıldız Holding',f:'KAP Ülker/Yıldız'},{n:'OYAK',f:'Armed Forces Pension Fund'},
-  {n:'İş Bankası',f:'KAP İşbank Group'},{n:'Alarko Holding',f:'KAP Alarko'},
-  {n:'Türkiye Varlık Fonu',f:'Turkey Wealth Fund'},
-];
-
-// ─── HELPERS ──────────────────────────────────────────────────────────
-const $c = n => n.toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
-const $p = n => (n>=0?'+':'')+n.toFixed(2)+'%';
-const ts  = () => new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-
-// ─── TABS ─────────────────────────────────────────────────────────────
-function ST(id){
-  ['p','w','n','f'].forEach(t=>{
-    document.getElementById('tab-'+t).classList.remove('act');
-    document.getElementById('nb-'+t).classList.remove('act');
-  });
-  document.getElementById('tab-'+id).classList.add('act');
-  document.getElementById('nb-'+id).classList.add('act');
-  if(id==='p') RP();
-  if(id==='w') RW();
-  if(id==='f') RIC();
+  );
 }
-
-// ─── LIVE PRICE FETCH (Yahoo Finance via corsproxy.io) ────────────────
-async function fetchPrices(target){
-  const tickers = target==='portfolio' ? H.map(h=>h.t) : W.map(w=>w.t);
-  if(!tickers.length){ alert('Nothing to fetch — add some tickers first.'); return; }
-
-  const btn = document.getElementById(target==='portfolio'?'pfetch-btn':'wfetch-btn');
-  btn.disabled=true;
-  btn.innerHTML='<i class="ti ti-loader spin"></i> Fetching…';
-
-  const symbols = tickers.join(',');
-  const yahooUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,shortName`;
-  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-
-  try {
-    const resp = await fetch(proxyUrl, {headers:{'X-Requested-With':'XMLHttpRequest'}});
-    if(!resp.ok) throw new Error('proxy error');
-    const data = await resp.json();
-    const results = data?.quoteResponse?.result || [];
-    if(!results.length) throw new Error('empty');
-
-    const pm={};
-    results.forEach(q=>{
-      pm[q.symbol]={
-        price: q.regularMarketPrice||0,
-        change: q.regularMarketChange||0,
-        changePct: q.regularMarketChangePercent||0,
-        high52: q.fiftyTwoWeekHigh||0,
-        name: q.shortName||q.symbol
-      };
-    });
-
-    if(target==='portfolio'){
-      H=H.map(h=>{ const d=pm[h.t]; return d?{...h,p:d.price,dayChange:d.change,dayChangePct:d.changePct,high52:d.high52,live:true}:h; });
-      document.getElementById('p-updated').textContent=`● Live prices as of ${ts()} — click again to refresh`;
-      RP();
-    } else {
-      W=W.map(w=>{ const d=pm[w.t]; return d?{...w,livePrice:d.price,dayChange:d.change,dayChangePct:d.changePct,high52:d.high52,live:true}:w; });
-      RW();
-    }
-  } catch(e){
-    alert('Live price fetch failed. Yahoo Finance may be rate-limiting — please wait 30 seconds and try again, or check your internet connection.');
-  } finally {
-    btn.disabled=false;
-    btn.innerHTML='<i class="ti ti-refresh"></i> Live Prices';
-  }
-}
-
-// ─── PORTFOLIO ────────────────────────────────────────────────────────
-function RP(){
-  const tv=H.reduce((s,h)=>s+h.s*h.p,0);
-  const tc=H.reduce((s,h)=>s+h.s*h.a,0);
-  const tr=tv-tc, tpct=tc>0?(tr/tc)*100:0;
-
-  document.getElementById('ptv').textContent=$c(tv);
-  const tb=document.getElementById('ptb');
-  tb.textContent=(tr>=0?'+':'')+$c(tr)+' ('+$p(tpct)+') all‑time';
-  tb.className='badge '+(tr>=0?'badge-up':'badge-dn');
-  document.getElementById('pmc').textContent=$c(tc);
-  const mr=document.getElementById('pmr'); mr.textContent=(tr>=0?'+':'')+$c(tr); mr.style.color=tr>=0?'var(--green)':'var(--red)';
-  const mp=document.getElementById('pmp'); mp.textContent=$p(tpct); mp.style.color=tpct>=0?'var(--green)':'var(--red)';
-  document.getElementById('pmn').textContent=H.length;
-
-  const hb=document.getElementById('phb'); hb.innerHTML='';
-  document.getElementById('pempty').style.display=H.length?'none':'block';
-
-  H.forEach(h=>{
-    const v=h.s*h.p, c=h.s*h.a, r=v-c, rp=(r/c)*100;
-    const liveBadge = h.live
-      ? `<span class="price-live" style="font-size:9px">● LIVE</span>`
-      : `<span style="font-size:9px;color:var(--text3)">manual</span>`;
-    const dayBadge = h.live
-      ? `<span class="badge ${h.dayChange>=0?'badge-up':'badge-dn'}" style="font-size:10px">${$p(h.dayChangePct)}</span>`
-      : `<span style="color:var(--text3)">—</span>`;
-    const row=document.createElement('tr');
-    row.innerHTML=`
-      <td class="tl" style="padding-left:18px;font-weight:500;font-family:var(--sans)">${h.t}</td>
-      <td style="color:var(--text2)">${h.s%1===0?h.s:h.s.toFixed(4)}</td>
-      <td><div>${$c(h.p)}</div><div style="margin-top:2px">${liveBadge}</div></td>
-      <td>${$c(v)}</td>
-      <td><span class="badge ${r>=0?'badge-up':'badge-dn'}">${$p(rp)}</span></td>
-      <td>${dayBadge}</td>
-      <td>${liveBadge}</td>
-      <td><button class="danger" onclick="RH('${h.t}')" title="Remove"><i class="ti ti-trash"></i></button></td>`;
-    hb.appendChild(row);
-  });
-
-  // Chart
-  const labels=H.map(h=>h.t), vals=H.map(h=>+(h.s*h.p).toFixed(2)), colors=H.map((_,i)=>COLS[i%COLS.length]);
-  if(!pChart){
-    pChart=new Chart(document.getElementById('pac'),{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${$c(ctx.raw)} (${tv>0?((ctx.raw/tv)*100).toFixed(1):0}%)`}}}}});
-  } else { pChart.data.labels=labels; pChart.data.datasets[0].data=vals; pChart.data.datasets[0].backgroundColor=colors; pChart.update(); }
-
-  const lg=document.getElementById('alloc-legend'); lg.innerHTML='';
-  H.forEach((h,i)=>{
-    const v=h.s*h.p, pct=tv>0?((v/tv)*100).toFixed(1):'0.0';
-    lg.innerHTML+=`<div class="legend-row"><div style="display:flex;align-items:center;gap:7px"><span class="legend-dot" style="background:${COLS[i%COLS.length]}"></span><span style="color:var(--text2)">${h.t}</span></div><span style="font-weight:500">${pct}%</span></div>`;
-  });
-}
-function togglePF(){const f=document.getElementById('padd');f.style.display=f.style.display==='none'?'block':'none';document.getElementById('perr').textContent='';}
-function addH(){
-  const t=document.getElementById('pt').value.trim().toUpperCase();
-  const s=parseFloat(document.getElementById('ps').value);
-  const a=parseFloat(document.getElementById('pco').value);
-  const p=parseFloat(document.getElementById('ppr').value);
-  const err=document.getElementById('perr');
-  if(!t||isNaN(s)||isNaN(a)||s<=0||a<=0){err.textContent='Ticker, shares, and avg cost are required.';return;}
-  err.textContent='';
-  const price = (!isNaN(p)&&p>0) ? p : a;
-  const ex=H.findIndex(h=>h.t===t);
-  if(ex>=0){const h=H[ex];const ns=h.s+s;H[ex]={...h,s:ns,a:+((h.s*h.a+s*a)/ns).toFixed(4),p:price};}
-  else H.push({t,s,a,p:price,dayChange:0,dayChangePct:0,high52:0,live:false});
-  ['pt','ps','pco','ppr'].forEach(id=>{document.getElementById(id).value='';});
-  RP();
-}
-function RH(t){H=H.filter(h=>h.t!==t);RP();}
-
-// ─── WATCHLIST ────────────────────────────────────────────────────────
-function RW(){
-  const wb=document.getElementById('whb'); wb.innerHTML='';
-  document.getElementById('wempty').style.display=W.length?'none':'block';
-  W.forEach(w=>{
-    const live=w.live&&w.livePrice;
-    const priceCell = live ? `<div>${$c(w.livePrice)}</div><div style="margin-top:1px"><span class="price-live" style="font-size:9px">● LIVE</span></div>` : `<span style="color:var(--text3)">—</span>`;
-    const upside = (live&&w.p) ? ((w.p-w.livePrice)/w.livePrice*100) : null;
-    const upsideCell = upside!==null ? `<span style="color:${upside>=0?'var(--green)':'var(--red)'}">${$p(upside)}</span>` : '—';
-    const dayCell = live ? `<span class="badge ${w.dayChange>=0?'badge-up':'badge-dn'}" style="font-size:10px">${$p(w.dayChangePct)}</span>` : '—';
-    const high52Cell = live&&w.high52 ? `<span style="color:var(--text2);font-size:12px">${$c(w.high52)}</span>` : '—';
-    const row=document.createElement('tr');
-    row.innerHTML=`
-      <td class="tl" style="padding-left:18px;font-weight:500;font-family:var(--sans)">${w.t}</td>
-      <td>${priceCell}</td>
-      <td>${w.p?'$'+w.p.toFixed(2):'—'}</td>
-      <td>${upsideCell}</td>
-      <td>${dayCell}</td>
-      <td>${high52Cell}</td>
-      <td style="color:var(--text2)">${w.alert?'±'+w.alert+'%':'—'}</td>
-      <td class="tl" style="color:var(--text2);font-size:12px">${w.n||'—'}</td>
-      <td><button class="danger" onclick="RWI('${w.t}')" title="Remove"><i class="ti ti-trash"></i></button></td>`;
-    wb.appendChild(row);
-  });
-}
-function toggleWF(){const f=document.getElementById('wadd');f.style.display=f.style.display==='none'?'block':'none';document.getElementById('werr').textContent='';}
-function addW(){
-  const t=document.getElementById('wti').value.trim().toUpperCase();
-  const p=parseFloat(document.getElementById('wtp').value);
-  const al=parseFloat(document.getElementById('wal').value);
-  const n=document.getElementById('wtn').value.trim();
-  const err=document.getElementById('werr');
-  if(!t){err.textContent='Enter a ticker.';return;}
-  if(W.find(w=>w.t===t)){err.textContent='Already on watchlist.';return;}
-  err.textContent='';
-  W.push({t,p:isNaN(p)?null:p,alert:isNaN(al)?null:al,n,livePrice:null,dayChange:0,dayChangePct:0,high52:0,live:false});
-  ['wti','wtp','wal','wtn'].forEach(id=>{document.getElementById(id).value='';});
-  RW();
-}
-function RWI(t){W=W.filter(w=>w.t!==t);RW();}
-
-// ─── NEWS ─────────────────────────────────────────────────────────────
-async function FN(usePort){
-  let q='';
-  if(usePort){if(!H.length){alert('Add holdings to your portfolio first.');return;} q=H.map(h=>h.t).join(', ');}
-  else{q=document.getElementById('nq').value.trim();if(!q)return;}
-  document.getElementById('nload').style.display='block';
-  document.getElementById('nres').innerHTML='';
-  document.getElementById('nempty').style.display='none';
-  document.getElementById('news-export-btn').style.display='none';
-  lastNewsData=[];
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      model:'claude-sonnet-4-20250514',max_tokens:1600,
-      tools:[{type:'web_search_20250305',name:'web_search'}],
-      messages:[{role:'user',content:`Search for the latest financial news about: "${q}". Find 5 recent articles from credible sources like Reuters, Bloomberg, FT, WSJ, CNBC, Barron's, or MarketWatch. Return ONLY valid JSON (no markdown, no preamble):\n{"query":"...","articles":[{"title":"...","source":"Reuters","date":"May 2026","summary":"2-3 sentence summary.","sentiment":"positive","url":"https://..."}]}\nsentiment must be exactly: positive, negative, or neutral.`}]
-    })});
-    const data=await resp.json();
-    const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-    const i=text.indexOf('{'),j=text.lastIndexOf('}');
-    const parsed=JSON.parse(text.substring(i,j+1));
-    const nc=document.getElementById('nres');
-    if(!parsed.articles?.length){nc.innerHTML='<p class="empty">No articles found. Try a different query.</p>';return;}
-    lastNewsData=parsed.articles;
-    nc.innerHTML=`<p style="font-size:11px;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.08em">Results for <strong style="color:var(--text)">${parsed.query||q}</strong></p>`;
-    parsed.articles.forEach(a=>{
-      const sc=a.sentiment==='positive'?'badge-up':a.sentiment==='negative'?'badge-dn':'badge-nu';
-      const d=document.createElement('div');d.className='news-card';
-      d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px">
-        <div class="news-title">${a.title}</div><span class="badge ${sc}" style="flex-shrink:0">${a.sentiment}</span></div>
-        <div class="news-meta">${a.source} · ${a.date}</div>
-        <div class="news-summary">${a.summary}</div>
-        ${a.url&&a.url.startsWith('http')?`<a class="news-link" href="${a.url}" target="_blank" rel="noopener">Read full article →</a>`:''}`;
-      nc.appendChild(d);
-    });
-    document.getElementById('news-export-btn').style.display='flex';
-  }catch(e){document.getElementById('nres').innerHTML='<p style="color:var(--red);padding:16px 0;font-size:12px">Failed to load news. Please try again.</p>';}
-  finally{document.getElementById('nload').style.display='none';}
-}
-
-// ─── FILINGS ──────────────────────────────────────────────────────────
-function SR(r){
-  region=r; selInv=null;
-  document.getElementById('fius').style.display=r==='us'?'block':'none';
-  document.getElementById('fitr').style.display=r==='tr'?'block':'none';
-  document.getElementById('rus').className='chip'+(r==='us'?' sel':'');
-  document.getElementById('rtr').className='chip'+(r==='tr'?' sel':'');
-  document.getElementById('fres').innerHTML='';
-  document.getElementById('fempty').style.display='block';
-  document.getElementById('filing-export-btn').style.display='none';
-  lastFilingData=null; RIC();
-}
-function RIC(){
-  document.getElementById('fusc').innerHTML=''; document.getElementById('ftrc').innerHTML='';
-  US_INV.forEach(inv=>{
-    const b=document.createElement('button'); b.className='chip'+(selInv?.n===inv.n?' sel':''); b.textContent=inv.n;
-    b.onclick=()=>{selInv=inv;RIC();FF(inv.n+' '+inv.f+' 13F SEC EDGAR latest portfolio holdings 2024 2025');};
-    document.getElementById('fusc').appendChild(b);
-  });
-  TR_INV.forEach(inv=>{
-    const b=document.createElement('button'); b.className='chip'+(selInv?.n===inv.n?' sel':''); b.textContent=inv.n;
-    b.onclick=()=>{selInv=inv;RIC();FF(inv.n+' '+inv.f+' KAP hissedarlık BIST açıklama 2024 2025');};
-    document.getElementById('ftrc').appendChild(b);
-  });
-}
-async function FF(preQ){
-  const q=preQ||document.getElementById('fq').value.trim(); if(!q)return;
-  document.getElementById('fload').style.display='block';
-  document.getElementById('fres').innerHTML='';
-  document.getElementById('fempty').style.display='none';
-  document.getElementById('filing-export-btn').style.display='none';
-  lastFilingData=null;
-  const isTR=region==='tr'&&!(preQ?.includes('13F'));
-  const prompt=isTR
-    ?`Search KAP and Turkish financial sources for: "${q}". Return ONLY valid JSON:\n{"investor":"...","fund":"...","source":"KAP","period":"Q? 20??","total_value":"X TRY","notes":"2 sentences English","holdings":[{"rank":1,"ticker":"THYAO","company":"Türk Hava Yolları","value":"X TRY","pct_portfolio":"X%","change":"increased"}]}`
-    :`Search SEC EDGAR for the latest 13F-HR filing of: "${q}". Return ONLY valid JSON:\n{"investor":"...","fund":"...","source":"SEC 13F","period":"Q? 20??","total_value":"$X billion","notes":"2 sentences of context","holdings":[{"rank":1,"ticker":"AAPL","company":"Apple Inc","value":"$X.X billion","pct_portfolio":"X.X%","change":"increased"}]}\nChange: increased, decreased, new, or unchanged. Top 12 holdings max.`;
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
-    const data=await resp.json();
-    const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-    const i=text.indexOf('{'),j=text.lastIndexOf('}');
-    const parsed=JSON.parse(text.substring(i,j+1));
-    lastFilingData=parsed;
-    const fc=document.getElementById('fres');
-    fc.innerHTML=`<div class="filing-header">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
-        <div><div class="filing-name">${parsed.investor||q}</div><div class="filing-sub">${parsed.fund||''}</div></div>
-        <div style="text-align:right"><span class="badge badge-info">${parsed.source||'Filing'}</span><div style="font-size:11px;color:var(--text2);margin-top:5px">${parsed.period||''} ${parsed.total_value?'· '+parsed.total_value:''}</div></div>
-      </div>
-      ${parsed.notes?`<div class="filing-notes">${parsed.notes}</div>`:''}
-    </div>`;
-    if(parsed.holdings?.length){
-      const cc={increased:'c-inc',decreased:'c-dec',new:'c-new',unchanged:'c-unc'};
-      const tw=document.createElement('div'); tw.className='tcard';
-      tw.innerHTML=`<div class="tcard-head"><span>Top Holdings</span><span style="font-size:11px;font-family:var(--mono);color:var(--text2);font-weight:400">${parsed.holdings.length} positions</span></div>
-        <table>
-          <colgroup><col style="width:5%"><col style="width:12%"><col style="width:37%"><col style="width:22%"><col style="width:12%"><col style="width:12%"></colgroup>
-          <thead><tr><th class="tl" style="padding-left:18px">#</th><th class="tl">Ticker</th><th class="tl">Company</th><th>Value</th><th>Weight</th><th>Change</th></tr></thead>
-          <tbody>${parsed.holdings.map(h=>`<tr>
-            <td class="tl" style="padding-left:18px;color:var(--text3)">${h.rank||''}</td>
-            <td class="tl" style="font-weight:500;font-family:var(--sans)">${h.ticker||'—'}</td>
-            <td class="tl" style="color:var(--text2);font-size:12px">${h.company||''}</td>
-            <td>${h.value||'—'}</td><td>${h.pct_portfolio||'—'}</td>
-            <td><span class="badge ${cc[h.change]||'badge-nu'}" style="font-size:10px">${h.change||'—'}</span></td>
-          </tr>`).join('')}</tbody>
-        </table>`;
-      fc.appendChild(tw);
-    }
-    document.getElementById('filing-export-btn').style.display='flex';
-  }catch(e){document.getElementById('fres').innerHTML='<p style="color:var(--red);padding:16px 0;font-size:12px">Failed to load filing data. Please try again.</p>';}
-  finally{document.getElementById('fload').style.display='none';}
-}
-
-// ─── EXCEL EXPORTS (SheetJS) ──────────────────────────────────────────
-function dl(wb, name){ XLSX.writeFile(wb, name); }
-
-// Style helper: bold header row
-function styledSheet(rows){
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  for(let c=range.s.c; c<=range.e.c; c++){
-    const cell = ws[XLSX.utils.encode_cell({r:0,c})];
-    if(cell){ cell.s = {font:{bold:true}, fill:{fgColor:{rgb:'1E2330'}}}; }
-  }
-  // Auto column widths
-  ws['!cols'] = rows[0].map((_,i)=>{
-    const max = Math.max(...rows.map(r=>String(r[i]||'').length));
-    return {wch: Math.min(Math.max(max+2, 10), 50)};
-  });
-  return ws;
-}
-
-function exportPortfolio(){
-  const tv=H.reduce((s,h)=>s+h.s*h.p,0);
-  const tc=H.reduce((s,h)=>s+h.s*h.a,0);
-  const tr=tv-tc, tpct=tc>0?(tr/tc)*100:0;
-
-  const holdRows=[
-    ['Ticker','Shares','Avg Cost ($)','Current Price ($)','Market Value ($)','Return ($)','Return (%)','Day Change ($)','Day Change (%)','Live Price?','52W High'],
-    ...H.map(h=>{
-      const v=h.s*h.p,c=h.s*h.a,r=v-c,rp=(r/c)*100;
-      return [h.t,h.s,h.a,h.p,+v.toFixed(2),+r.toFixed(2),+rp.toFixed(2),+(h.dayChange||0).toFixed(2),+(h.dayChangePct||0).toFixed(2),h.live?'Yes':'No',h.high52||''];
-    })
-  ];
-  const sumRows=[
-    ['Metric','Value'],
-    ['Total Portfolio Value ($)',+tv.toFixed(2)],
-    ['Total Invested ($)',+tc.toFixed(2)],
-    ['Total Return ($)',+tr.toFixed(2)],
-    ['Total Return (%)',+tpct.toFixed(2)],
-    ['Number of Positions',H.length],
-    ['Exported at',new Date().toLocaleString()],
-  ];
-  const allocRows=[
-    ['Ticker','Market Value ($)','Weight (%)'],
-    ...H.map(h=>{ const v=h.s*h.p; return [h.t,+v.toFixed(2),tv>0?+((v/tv)*100).toFixed(2):0]; })
-  ];
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, styledSheet(holdRows), 'Holdings');
-  XLSX.utils.book_append_sheet(wb, styledSheet(sumRows), 'Summary');
-  XLSX.utils.book_append_sheet(wb, styledSheet(allocRows), 'Allocation');
-  dl(wb, 'InvestBoard_Portfolio.xlsx');
-}
-
-function exportWatchlist(){
-  if(!W.length){alert('Your watchlist is empty.');return;}
-  const rows=[
-    ['Ticker','Live Price ($)','Target Price ($)','Upside to Target (%)','Day Change ($)','Day Change (%)','52W High ($)','Alert (±%)','Note','Live Data?'],
-    ...W.map(w=>{
-      const upside=(w.live&&w.livePrice&&w.p)?+((w.p-w.livePrice)/w.livePrice*100).toFixed(2):'';
-      return [w.t,w.livePrice||'',w.p||'',upside,+(w.dayChange||0).toFixed(2),+(w.dayChangePct||0).toFixed(2),w.high52||'',w.alert||'',w.n||'',w.live?'Yes':'No'];
-    })
-  ];
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, styledSheet(rows), 'Watchlist');
-  dl(wb, 'InvestBoard_Watchlist.xlsx');
-}
-
-function exportNews(){
-  if(!lastNewsData.length){alert('No news data to export. Run a search first.');return;}
-  const rows=[
-    ['Title','Source','Date','Summary','Sentiment','URL'],
-    ...lastNewsData.map(a=>[a.title,a.source,a.date,a.summary,a.sentiment,a.url||''])
-  ];
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, styledSheet(rows), 'News');
-  dl(wb, 'InvestBoard_News.xlsx');
-}
-
-function exportFiling(){
-  if(!lastFilingData){alert('No filing data to export. Load a filing first.');return;}
-  const d=lastFilingData;
-  const holdRows=[
-    ['Rank','Ticker','Company','Value','Portfolio Weight (%)','Change'],
-    ...(d.holdings||[]).map(h=>[h.rank||'',h.ticker||'',h.company||'',h.value||'',h.pct_portfolio||'',h.change||''])
-  ];
-  const infoRows=[
-    ['Field','Value'],
-    ['Investor',d.investor||''],['Fund',d.fund||''],['Source',d.source||''],
-    ['Period',d.period||''],['Total AUM',d.total_value||''],['Notes',d.notes||''],
-    ['Exported at',new Date().toLocaleString()],
-  ];
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, styledSheet(holdRows), 'Holdings');
-  XLSX.utils.book_append_sheet(wb, styledSheet(infoRows), 'Info');
-  dl(wb, `InvestBoard_${(d.investor||'Filing').replace(/\s+/g,'_')}.xlsx`);
-}
-
-// ─── INIT ─────────────────────────────────────────────────────────────
-ST('p');
+ 
+ReactDOM.createRoot(document.getElementById("root")).render(<StockTerminal />);
 </script>
 </body>
 </html>
