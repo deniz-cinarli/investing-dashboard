@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Stock Terminal</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+a{text-decoration:none;color:inherit}
+body{font-family:'Courier New',Courier,monospace;background:#070710;color:#c8d0e0;min-height:100vh}
+
+#header{background:#08080f;border-bottom:1px solid #1c1c30;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{color:#00e676;font-size:13px;font-weight:700;letter-spacing:4px;margin-right:4px;white-space:nowrap}
+#ticker-input{background:#101020;border:1px solid #1c1c30;color:#c8d0e0;font-family:inherit;font-size:13px;padding:5px 10px;border-radius:3px;outline:none;width:88px;letter-spacing:2px;text-transform:uppercase}
+#ticker-input:focus{border-color:#00e676}
+#fetch-btn{background:#00e676;color:#060610;border:none;font-family:inherit;font-size:10px;font-weight:700;padding:6px 14px;border-radius:3px;cursor:pointer;letter-spacing:2px}
+#fetch-btn:hover{background:#33ff99}
+#header-status{font-size:11px;color:#505068}
+
+#tabs{background:#08080f;border-bottom:1px solid #1c1c30;padding:0 14px;display:flex}
+.tab-btn{padding:10px 14px;font-size:10px;letter-spacing:2px;cursor:pointer;border:none;background:none;color:#505068;border-bottom:2px solid transparent;font-family:inherit}
+.tab-btn.active{color:#00e676;border-bottom:2px solid #00e676}
+
+#content{padding:16px 18px}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+.msg{color:#505068;font-size:11px;padding:30px;text-align:center;letter-spacing:2px}
+.err-box{color:#ff4466;font-size:11px;padding:12px 14px;background:#1a0008;border:1px solid #330011;border-radius:4px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.retry-btn{color:#00e676;background:none;border:none;cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:1px;white-space:nowrap}
+.hidden{display:none!important}
+
+.card{background:#0d0d1a;border:1px solid #1c1c30;border-radius:4px;padding:14px 18px;margin-bottom:12px}
+.card-label{font-size:9px;color:#505068;letter-spacing:3px;margin-bottom:8px}
+.price-big{font-size:36px;color:#c8d0e0;font-weight:300}
+.price-chg{font-size:16px;margin-left:14px}
+.up{color:#00e676}.down{color:#ff4466}
+#stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px}
+.stat-card{background:#0d0d1a;border:1px solid #1c1c30;border-radius:4px;padding:10px 12px}
+.stat-lbl{font-size:9px;color:#505068;letter-spacing:2px;margin-bottom:4px}
+.stat-val{font-size:14px;color:#c8d0e0}
+
+#chart-toolbar{display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:wrap;padding:6px 10px;background:#0a0a14;border:1px solid #1c1c30;border-radius:4px}
+.tv-sep{width:1px;height:16px;background:#1c1c30;margin:0 3px;flex-shrink:0}
+.tv-btn{padding:3px 8px;font-size:10px;font-family:inherit;cursor:pointer;border-radius:2px;border:1px solid transparent;background:transparent;color:#505068;letter-spacing:.5px;transition:all .12s;white-space:nowrap}
+.tv-btn:hover{color:#c8d0e0;background:#1c1c30}
+.tv-btn.active{color:#00e676;background:#003316;border-color:#00e676}
+.tv-btn.active-tool{color:#ffdd00;background:#ffdd0015;border-color:#ffdd0050}
+.ma20-on{color:#ff9500!important;background:#ff950015!important;border-color:#ff950060!important}
+.ma50-on{color:#4488ff!important;background:#4488ff15!important;border-color:#4488ff60!important}
+.ma200-on{color:#aa44ff!important;background:#aa44ff15!important;border-color:#aa44ff60!important}
+#color-swatches{display:flex;gap:4px;align-items:center}
+.cdot{width:12px;height:12px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;transition:transform .1s}
+.cdot:hover{transform:scale(1.25)}.cdot.sel{border-color:#fff}
+#draw-hint{font-size:10px;color:#ffdd00;letter-spacing:1px;padding:5px 12px;background:#ffdd0010;border:1px solid #ffdd0030;border-radius:3px;margin-bottom:10px;display:none}
+
+#chart-outer{background:#0d0d1a;border:1px solid #1c1c30;border-radius:4px;overflow:hidden}
+#chart-container{width:100%;height:480px}
+#chart-container.draw-cur{cursor:crosshair}
+#ma-footer{display:flex;gap:16px;padding:8px 14px;border-top:1px solid #1c1c30;font-size:11px;flex-wrap:wrap}
+
+.news-card{background:#0d0d1a;border:1px solid #1c1c30;border-radius:4px;padding:14px;margin-bottom:10px}
+.news-meta{font-size:10px;color:#505068;margin-bottom:6px}
+.news-title{font-size:13px;color:#c8d0e0;line-height:1.5;margin-bottom:6px}
+.news-desc{font-size:11px;color:#505068;line-height:1.7;margin-bottom:7px}
+.news-link{font-size:9px;color:#00e676;letter-spacing:1px;padding:2px 8px;border:1px solid #003316;border-radius:2px}
+
+.fil-head{font-size:9px;color:#505068;letter-spacing:2px;margin-bottom:14px}
+.fil-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #111120}
+.fbadge{font-size:9px;padding:2px 8px;border-radius:2px;letter-spacing:1px;font-weight:700;min-width:52px;text-align:center;white-space:nowrap}
+.fdesc{font-size:11px;color:#c8d0e0;flex:1}
+.fdate{font-size:10px;color:#505068;min-width:84px}
+.flink{font-size:9px;color:#00e676;letter-spacing:1px;padding:2px 8px;border:1px solid #003316;border-radius:2px;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <span class="logo">◈ TERMINAL</span>
+  <input id="ticker-input" type="text" value="AAPL" maxlength="10" placeholder="TICKER" autocomplete="off" spellcheck="false"/>
+  <button id="fetch-btn">FETCH →</button>
+  <span id="header-status"></span>
+</div>
+
+<div id="tabs">
+  <button class="tab-btn active" data-tab="overview">OVERVIEW</button>
+  <button class="tab-btn" data-tab="chart">CHART</button>
+  <button class="tab-btn" data-tab="news">NEWS</button>
+  <button class="tab-btn" data-tab="filings">FILINGS</button>
+</div>
+
+<div id="content">
+
+  <div id="tab-overview" class="tab-panel active">
+    <div id="ov-load" class="msg">⬡ FETCHING PRICE DATA...</div>
+    <div id="ov-err" class="err-box hidden"><span id="ov-et"></span><button class="retry-btn" id="ov-retry">RETRY</button></div>
+    <div id="ov-body" class="hidden">
+      <div class="card">
+        <div class="card-label" id="price-lbl">LAST PRICE</div>
+        <div><span class="price-big" id="price-val">—</span><span class="price-chg" id="price-chg-el">—</span></div>
+      </div>
+      <div id="stats-grid"></div>
+    </div>
+  </div>
+
+  <div id="tab-chart" class="tab-panel">
+    <div id="ch-load" class="msg">⬡ LOADING CHART DATA...</div>
+    <div id="ch-err" class="err-box hidden"><span id="ch-et"></span><button class="retry-btn" id="ch-retry">RETRY</button></div>
+    <div id="ch-body" class="hidden">
+      <div id="chart-toolbar">
+        <div id="period-btns" style="display:flex;gap:2px"></div>
+        <div class="tv-sep"></div>
+        <button class="tv-btn ma20-on" id="ma20-btn">MA20</button>
+        <button class="tv-btn ma50-on" id="ma50-btn">MA50</button>
+        <button class="tv-btn ma200-on" id="ma200-btn">MA200</button>
+        <div class="tv-sep"></div>
+        <button class="tv-btn" id="draw-btn">✏ Line</button>
+        <button class="tv-btn" id="undo-btn">↩ Undo</button>
+        <button class="tv-btn" id="clear-btn">✕ Clear</button>
+        <div class="tv-sep"></div>
+        <div id="color-swatches">
+          <div class="cdot sel" data-color="#ffdd00" style="background:#ffdd00" title="Yellow"></div>
+          <div class="cdot" data-color="#ff4466" style="background:#ff4466" title="Red"></div>
+          <div class="cdot" data-color="#00e676" style="background:#00e676" title="Green"></div>
+          <div class="cdot" data-color="#4488ff" style="background:#4488ff" title="Blue"></div>
+          <div class="cdot" data-color="#aaaaaa" style="background:#aaaaaa" title="Gray"></div>
+        </div>
+      </div>
+      <div id="draw-hint">● CLICK CHART — POINT 1</div>
+      <div id="chart-outer">
+        <div id="chart-container"></div>
+        <div id="ma-footer">
+          <span id="ma20-foot" style="color:#ff9500">MA20: <strong>—</strong></span>
+          <span id="ma50-foot" style="color:#4488ff">MA50: <strong>—</strong></span>
+          <span id="ma200-foot" style="color:#aa44ff">MA200: <strong>—</strong></span>
+          <span id="cur-foot" style="color:#505068">Current: <strong style="color:#00e676">—</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-news" class="tab-panel">
+    <div id="nw-idle" class="msg">⬡ READY — ENTER A TICKER AND CLICK FETCH</div>
+    <div id="nw-load" class="msg hidden">⬡ FETCHING NEWS...</div>
+    <div id="nw-err" class="err-box hidden"><span id="nw-et"></span><button class="retry-btn" id="nw-retry">RETRY</button></div>
+    <div id="nw-body"></div>
+  </div>
+
+  <div id="tab-filings" class="tab-panel">
+    <div id="fi-idle" class="msg">⬡ READY — ENTER A TICKER AND CLICK FETCH</div>
+    <div id="fi-load" class="msg hidden">⬡ QUERYING SEC EDGAR...</div>
+    <div id="fi-err" class="err-box hidden"><span id="fi-et"></span><button class="retry-btn" id="fi-retry">RETRY</button></div>
+    <div id="fi-body"></div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// PERIODS  (1 button = 1 candle size)
+// ─────────────────────────────────────────────
+const PERIODS = [
+  { label:'1D', iv:'1d',  range:'1y',  tip:'1 candle = 1 trading day'  },
+  { label:'1W', iv:'1wk', range:'5y',  tip:'1 candle = 1 week'         },
+  { label:'1M', iv:'1mo', range:'max', tip:'1 candle = 1 month'        },
+];
+
+const FORMS  = ['10-K','10-Q','8-K','DEF 14A','4','S-1','S-3'];
+const FORM_D = {'10-K':'Annual Report','10-Q':'Quarterly Report','8-K':'Current Report',
+                'DEF 14A':'Proxy Statement','4':'Insider Trade','S-1':'IPO Registration','S-3':'Shelf Registration'};
+const FORM_C = {'10-K':'#4488ff','10-Q':'#00bcd4','8-K':'#ff9500',
+                'DEF 14A':'#aa44ff','4':'#ff4466','S-1':'#00e676','S-3':'#44cc88'};
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const S = {
+  ticker:'AAPL', pidx:0, tab:'overview',
+  showMA:{ma20:true,ma50:true,ma200:true},
+  lwChart:null, candleSeries:null, volSeries:null,
+  maSeries:{ma20:null,ma50:null,ma200:null},
+  allTimes:[],
+  drawMode:false, drawColor:'#ffdd00', drawP1:null, lines:[],
+  chartLoaded:false, newsLoaded:false, filingsLoaded:false,
+};
+
+// ─────────────────────────────────────────────
+// DOM HELPERS
+// ─────────────────────────────────────────────
+const $    = id => document.getElementById(id);
+const show = id => $( id)?.classList.remove('hidden');
+const hide = id => $( id)?.classList.add('hidden');
+const html = (id, h) => { const e=$(id); if(e) e.innerHTML=h; };
+
+function fmt(v, d=2) {
+  if (v == null || v === '' || isNaN(+v)) return '—';
+  return (+v).toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function fmtB(n) {
+  n = +n;
+  if (!isFinite(n)) return '—';
+  if (n >= 1e12) return (n/1e12).toFixed(2)+'T';
+  if (n >= 1e9)  return (n/1e9).toFixed(2)+'B';
+  if (n >= 1e6)  return (n/1e6).toFixed(2)+'M';
+  return n.toLocaleString();
+}
+function calcMA(arr, p) {
+  return arr.map((_, i) => {
+    if (i < p-1) return null;
+    const sum = arr.slice(i-p+1, i+1).reduce((a,b) => a+b, 0);
+    return parseFloat((sum/p).toFixed(4));
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// YAHOO FINANCE FETCH
+//
+// WHY this approach is fast:
+//   - CORS errors (network block) are thrown INSTANTLY by the browser — no waiting.
+//   - Yahoo Finance allows direct browser access (confirmed: Overview shows $308.82).
+//   - So the direct call either succeeds in ~200ms OR fails in ~0ms.
+//   - corsproxy.io is a reliable server-side relay used only if direct is blocked.
+//   - No AbortController / timeout needed — failures are instant, not slow.
+// ─────────────────────────────────────────────────────────────────────────────
+async function yfFetch(sym, iv, range) {
+  const path = `/v8/finance/chart/${encodeURIComponent(sym)}?interval=${iv}&range=${range}&includePrePost=false`;
+
+  // 1. Try query1 directly
+  try {
+    const r = await fetch('https://query1.finance.yahoo.com' + path);
+    if (r.ok) return await r.json();
+  } catch(_) { /* CORS blocked — instant failure, no delay */ }
+
+  // 2. Try query2 directly
+  try {
+    const r = await fetch('https://query2.finance.yahoo.com' + path);
+    if (r.ok) return await r.json();
+  } catch(_) {}
+
+  // 3. corsproxy.io — server-side relay, bypasses CORS
+  try {
+    const url = 'https://corsproxy.io/?' + encodeURIComponent('https://query1.finance.yahoo.com' + path);
+    const r = await fetch(url);
+    if (r.ok) return await r.json();
+  } catch(_) {}
+
+  // 4. allorigins.win — returns { contents: "<json string>" }
+  try {
+    const url = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://query1.finance.yahoo.com' + path);
+    const r = await fetch(url);
+    if (r.ok) {
+      const wrapper = await r.json();
+      if (wrapper.contents) return JSON.parse(wrapper.contents);
+    }
+  } catch(_) {}
+
+  throw new Error('Unable to load data. Check your connection and try again.');
+}
+
+// ─────────────────────────────────────────────
+// OVERVIEW
+// ─────────────────────────────────────────────
+async function loadPrice(sym) {
+  show('ov-load'); hide('ov-err'); hide('ov-body');
+  $('header-status').textContent = 'FETCHING...';
+  try {
+    const json = await yfFetch(sym, '1d', '1y');
+    const res  = json.chart?.result?.[0];
+    if (!res) throw new Error(`No data for "${sym}"`);
+
+    const meta   = res.meta;
+    const q0     = res.indicators?.quote?.[0] || {};
+    const closes = (q0.close  || []).filter(c => c != null);
+    const highs  = (q0.high   || []).filter(h => h != null);
+    const lows   = (q0.low    || []).filter(l => l != null);
+
+    const price  = meta.regularMarketPrice ?? closes[closes.length-1];
+    const prev   = meta.chartPreviousClose ?? meta.previousClose ?? price;
+    const chg    = price - prev;
+    const chgPct = prev ? (chg/prev)*100 : 0;
+    const hi52   = highs.length ? Math.max(...highs) : null;
+    const lo52   = lows.length  ? Math.min(...lows.filter(v=>v>0)) : null;
+
+    $('price-val').textContent  = `$${fmt(price)}`;
+    $('price-lbl').textContent  = `LAST PRICE · ${meta.exchangeName || ''}`;
+    const ce = $('price-chg-el');
+    ce.textContent = `${chg>=0?'+':''}${fmt(chg)} (${chg>=0?'+':''}${fmt(chgPct)}%)`;
+    ce.className   = 'price-chg ' + (chg>=0?'up':'down');
+
+    const rows = [
+      ['SYMBOL',    meta.symbol || sym],
+      ['EXCHANGE',  meta.exchangeName || '—'],
+      ['52W HIGH',  hi52!=null ? `$${fmt(hi52)}` : '—'],
+      ['52W LOW',   lo52!=null ? `$${fmt(lo52)}` : '—'],
+      ['VOLUME',    meta.regularMarketVolume ? fmtB(meta.regularMarketVolume) : '—'],
+      ['PREV CLOSE',`$${fmt(prev)}`],
+      ['CURRENCY',  meta.currency || '—'],
+      ['TYPE',      meta.instrumentType || '—'],
+    ];
+
+    html('stats-grid', rows.map(([l,v]) => `
+      <div class="stat-card">
+        <div class="stat-lbl">${l}</div>
+        <div class="stat-val">${v||'—'}</div>
+      </div>`).join(''));
+
+    hide('ov-load'); show('ov-body');
+    $('header-status').textContent = `${sym} · ${meta.exchangeName||''} · $${fmt(price)}`;
+  } catch(e) {
+    hide('ov-load'); show('ov-err');
+    $('ov-et').textContent = `⚠ ${e.message}`;
+    $('header-status').textContent = 'ERROR';
+  }
+}
+
+// ─────────────────────────────────────────────
+// CHART — create Lightweight Charts instance once
+// ─────────────────────────────────────────────
+function initChart() {
+  if (S.lwChart) return;
+  const cont = $('chart-container');
+  S.lwChart = LightweightCharts.createChart(cont, {
+    width:  cont.clientWidth,
+    height: 480,
+    layout: {
+      background: {type:'solid', color:'#0d0d1a'},
+      textColor:  '#c8d0e0',
+      fontFamily: "'Courier New',Courier,monospace",
+    },
+    grid: {
+      vertLines: {color:'#16162a', style:1},
+      horzLines: {color:'#16162a', style:1},
+    },
+    crosshair: {mode: LightweightCharts.CrosshairMode.Normal},
+    rightPriceScale: {borderColor:'#1c1c30'},
+    timeScale: {borderColor:'#1c1c30', timeVisible:true, secondsVisible:false},
+    handleScroll: true,
+    handleScale:  true,
+  });
+
+  new ResizeObserver(() => {
+    if (S.lwChart) S.lwChart.applyOptions({width: $('chart-container').clientWidth});
+  }).observe(cont);
+
+  // Click listener for drawing trendlines
+  S.lwChart.subscribeClick(param => {
+    if (!S.drawMode || !param.time || !param.point) return;
+    const price = S.candleSeries?.coordinateToPrice(param.point.y);
+    if (price == null || isNaN(price)) return;
+    if (!S.drawP1) {
+      S.drawP1 = {time:param.time, price};
+      $('draw-hint').textContent = '● POINT 1 SET — CLICK FOR POINT 2';
+    } else {
+      commitLine(S.drawP1, {time:param.time, price});
+      S.drawP1 = null;
+      $('draw-hint').textContent = '● LINE DRAWN — CLICK FOR NEXT POINT 1';
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+// CHART — load data for a given period
+// ─────────────────────────────────────────────
+async function loadChart(sym, pidx) {
+  exitDraw(); clearLines();
+  hide('ch-body'); hide('ch-err');
+  show('ch-load');
+
+  const p = PERIODS[pidx];
+  try {
+    const json = await yfFetch(sym, p.iv, p.range);
+    const res  = json.chart?.result?.[0];
+    if (!res) throw new Error('No chart data returned');
+
+    const ts = res.timestamp;
+    const q  = res.indicators?.quote?.[0];
+    if (!ts || !q) throw new Error('Malformed chart response');
+
+    // Build OHLCV arrays, skip any bars with null values
+    const candles=[], closes=[], vols=[];
+    for (let i=0; i<ts.length; i++) {
+      const o=q.open[i], h=q.high[i], l=q.low[i], c=q.close[i], v=q.volume[i];
+      if (o==null||h==null||l==null||c==null) continue;
+      candles.push({
+        time: ts[i],
+        open: +o.toFixed(4), high: +h.toFixed(4),
+        low:  +l.toFixed(4), close:+c.toFixed(4),
+      });
+      closes.push(c);
+      vols.push({
+        time:  ts[i],
+        value: v || 0,
+        color: c >= o ? 'rgba(0,230,118,0.4)' : 'rgba(255,68,102,0.4)',
+      });
+    }
+    if (!candles.length) throw new Error('No valid candle data in response');
+    S.allTimes = candles.map(c => c.time);
+
+    const ma20  = calcMA(closes, 20);
+    const ma50  = calcMA(closes, 50);
+    const ma200 = calcMA(closes, 200);
+
+    const toSeries = arr => candles
+      .map((c,i) => arr[i]!=null ? {time:c.time, value:arr[i]} : null)
+      .filter(Boolean);
+
+    // Init chart instance on first use
+    initChart();
+
+    // Remove old series before adding new ones
+    [S.candleSeries, S.volSeries, ...Object.values(S.maSeries)].forEach(s => {
+      if (s) try { S.lwChart.removeSeries(s); } catch(_) {}
+    });
+    S.candleSeries = null; S.volSeries = null;
+    S.maSeries = {ma20:null, ma50:null, ma200:null};
+
+    // Volume bars (bottom 14% of chart)
+    S.volSeries = S.lwChart.addHistogramSeries({
+      priceFormat:  {type:'volume'},
+      priceScaleId: 'vol',
+    });
+    S.lwChart.priceScale('vol').applyOptions({scaleMargins:{top:0.86, bottom:0}});
+    S.volSeries.setData(vols);
+
+    // Candlestick series
+    S.candleSeries = S.lwChart.addCandlestickSeries({
+      upColor:         '#00e676', downColor:         '#ff4466',
+      borderUpColor:   '#00e676', borderDownColor:   '#ff4466',
+      wickUpColor:     '#00e676', wickDownColor:     '#ff4466',
+    });
+    S.candleSeries.setData(candles);
+
+    // Moving average line series
+    const maLineOpts = color => ({
+      color, lineWidth:1.5,
+      priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false,
+    });
+    S.maSeries.ma20  = S.lwChart.addLineSeries(maLineOpts('#ff9500'));
+    S.maSeries.ma50  = S.lwChart.addLineSeries(maLineOpts('#4488ff'));
+    S.maSeries.ma200 = S.lwChart.addLineSeries(maLineOpts('#aa44ff'));
+    S.maSeries.ma20.setData(toSeries(ma20));
+    S.maSeries.ma50.setData(toSeries(ma50));
+    S.maSeries.ma200.setData(toSeries(ma200));
+    S.maSeries.ma20.applyOptions({visible:S.showMA.ma20});
+    S.maSeries.ma50.applyOptions({visible:S.showMA.ma50});
+    S.maSeries.ma200.applyOptions({visible:S.showMA.ma200});
+
+    // Footer: current MA values
+    const lastVal = arr => [...arr].reverse().find(v => v!=null);
+    html('ma20-foot', `<span style="color:#ff9500">MA20: <strong>$${fmt(lastVal(ma20))}</strong></span>`);
+    html('ma50-foot', `<span style="color:#4488ff">MA50: <strong>$${fmt(lastVal(ma50))}</strong></span>`);
+    html('ma200-foot',`<span style="color:#aa44ff">MA200: <strong>$${fmt(lastVal(ma200))}</strong></span>`);
+    html('cur-foot',  `<span style="color:#505068">Current: <strong style="color:#00e676">$${fmt(closes[closes.length-1])}</strong></span>`);
+
+    S.lwChart.timeScale().fitContent();
+    hide('ch-load'); show('ch-body');
+    S.chartLoaded = true;
+
+  } catch(e) {
+    hide('ch-load'); show('ch-err');
+    $('ch-et').textContent = `⚠ ${e.message}`;
+  }
+}
+
+// ─────────────────────────────────────────────
+// DRAWING
+// ─────────────────────────────────────────────
+function commitLine(p1, p2) {
+  if (!S.lwChart || !S.allTimes.length) return;
+  const [a,b] = p1.time <= p2.time ? [p1,p2] : [p2,p1];
+  const dt    = b.time - a.time;
+  const slope = dt ? (b.price-a.price)/dt : 0;
+  const data  = S.allTimes.map(t => ({
+    time:  t,
+    value: parseFloat((a.price + slope*(t-a.time)).toFixed(6)),
+  }));
+  const series = S.lwChart.addLineSeries({
+    color:     S.drawColor,
+    lineWidth: 1.5,
+    lineStyle: LightweightCharts.LineStyle.Solid,
+    priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false,
+  });
+  series.setData(data);
+  S.lines.push(series);
+}
+
+function undoLine() {
+  if (S.lwChart && S.lines.length)
+    try { S.lwChart.removeSeries(S.lines.pop()); } catch(_) {}
+}
+
+function clearLines() {
+  S.lines.forEach(s => { try { S.lwChart?.removeSeries(s); } catch(_) {} });
+  S.lines = [];
+}
+
+function exitDraw() {
+  S.drawMode = false; S.drawP1 = null;
+  const btn=$('draw-btn'), hint=$('draw-hint'), cont=$('chart-container');
+  if (btn)  { btn.classList.remove('active-tool'); btn.textContent='✏ Line'; }
+  if (hint)   hint.style.display = 'none';
+  if (cont)   cont.classList.remove('draw-cur');
+}
+
+function enterDraw() {
+  if (!S.chartLoaded) return;
+  S.drawMode = true; S.drawP1 = null;
+  const btn=$('draw-btn'), hint=$('draw-hint'), cont=$('chart-container');
+  btn.classList.add('active-tool'); btn.textContent = '✕ Cancel';
+  hint.style.display = 'block'; hint.textContent = '● CLICK CHART — POINT 1';
+  cont.classList.add('draw-cur');
+}
+
+// ─────────────────────────────────────────────
+// NEWS
+// ─────────────────────────────────────────────
+async function loadNews(sym) {
+  hide('nw-idle'); hide('nw-err'); html('nw-body','');
+  show('nw-load');
+  try {
+    const rssUrl = encodeURIComponent(
+      `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${sym}&region=US&lang=en-US`);
+    const r = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}&count=8`);
+    if (!r.ok) throw new Error('News service unavailable');
+    const data = await r.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'Feed error');
+    const items = data.items || [];
+    if (!items.length) throw new Error('No articles found for ' + sym);
+    hide('nw-load');
+    html('nw-body', items.map(item => {
+      const d    = new Date(item.pubDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const desc = item.description
+        ? item.description.replace(/<[^>]*>/g,'').trim().slice(0,240)+'…'
+        : '';
+      return `<div class="news-card">
+        <div class="news-meta">${item.author||'Yahoo Finance'} · ${d}</div>
+        <div class="news-title">${item.title}</div>
+        ${desc ? `<div class="news-desc">${desc}</div>` : ''}
+        <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-link">READ →</a>
+      </div>`;
+    }).join(''));
+    S.newsLoaded = true;
+  } catch(e) {
+    hide('nw-load'); show('nw-err');
+    $('nw-et').textContent = `⚠ ${e.message}`;
+  }
+}
+
+// ─────────────────────────────────────────────
+// FILINGS
+// ─────────────────────────────────────────────
+async function loadFilings(sym) {
+  hide('fi-idle'); hide('fi-err'); html('fi-body','');
+  show('fi-load');
+  try {
+    const tr = await fetch('https://www.sec.gov/files/company_tickers.json');
+    if (!tr.ok) throw new Error('SEC EDGAR unreachable');
+    const tickers = await tr.json();
+    let cikRaw=null, cName=null;
+    for (const v of Object.values(tickers)) {
+      if (v.ticker.toLowerCase() === sym.toLowerCase()) {
+        cikRaw=v.cik_str; cName=v.title; break;
+      }
+    }
+    if (!cikRaw) throw new Error(`"${sym}" not found in SEC EDGAR`);
+    const cikPad = String(cikRaw).padStart(10,'0');
+    const sr = await fetch(`https://data.sec.gov/submissions/CIK${cikPad}.json`);
+    if (!sr.ok) throw new Error('Submissions fetch failed');
+    const sub = await sr.json();
+    const {form, filingDate, primaryDocument, accessionNumber} = sub.filings.recent;
+    const list=[];
+    for (let i=0; i<form.length && list.length<20; i++) {
+      if (FORMS.includes(form[i])) {
+        const acc = accessionNumber[i].replace(/-/g,'');
+        list.push({
+          form:form[i], date:filingDate[i],
+          url:`https://www.sec.gov/Archives/edgar/data/${cikRaw}/${acc}/${primaryDocument[i]}`,
+        });
+      }
+    }
+    hide('fi-load');
+    html('fi-body', `<div class="card" style="padding:16px">
+      <div class="fil-head">${cName} · CIK ${cikRaw} · ${list.length} FILINGS</div>
+      ${list.map(f => {
+        const fc = FORM_C[f.form]||'#505068';
+        return `<div class="fil-row">
+          <span class="fbadge" style="background:${fc}18;color:${fc};border:1px solid ${fc}40">${f.form}</span>
+          <span class="fdate">${f.date}</span>
+          <span class="fdesc">${FORM_D[f.form]||f.form}</span>
+          <a href="${f.url}" target="_blank" rel="noopener noreferrer" class="flink">VIEW →</a>
+        </div>`;
+      }).join('')}
+    </div>`);
+    S.filingsLoaded = true;
+  } catch(e) {
+    hide('fi-load'); show('fi-err');
+    $('fi-et').textContent = `⚠ ${e.message}`;
+  }
+}
+
+// ─────────────────────────────────────────────
+// FETCH HANDLER
+// ─────────────────────────────────────────────
+function doFetch() {
+  const sym = $('ticker-input').value.trim().toUpperCase();
+  if (!sym) return;
+  S.ticker = sym;
+  S.chartLoaded = S.newsLoaded = S.filingsLoaded = false;
+  loadPrice(sym);
+  if (S.tab==='chart')   loadChart(sym, S.pidx);
+  if (S.tab==='news')    loadNews(sym);
+  if (S.tab==='filings') loadFilings(sym);
+}
+
+// ─────────────────────────────────────────────
+// BUILD PERIOD BUTTONS
+// ─────────────────────────────────────────────
+PERIODS.forEach((p, i) => {
+  const b = document.createElement('button');
+  b.className   = 'tv-btn' + (i===0 ? ' active' : '');
+  b.textContent = p.label;
+  b.title       = p.tip;
+  b.addEventListener('click', () => {
+    if (S.pidx === i) return;
+    S.pidx = i;
+    $('period-btns').querySelectorAll('.tv-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    S.chartLoaded = false;
+    loadChart(S.ticker, i);
+  });
+  $('period-btns').appendChild(b);
+});
+
+// ─────────────────────────────────────────────
+// MA TOGGLE BUTTONS
+// ─────────────────────────────────────────────
+[['ma20-btn','ma20','ma20-on'],
+ ['ma50-btn','ma50','ma50-on'],
+ ['ma200-btn','ma200','ma200-on']].forEach(([id,ma,cls]) => {
+  $(id).addEventListener('click', () => {
+    S.showMA[ma] = !S.showMA[ma];
+    $(id).classList.toggle(cls, S.showMA[ma]);
+    if (S.maSeries[ma]) S.maSeries[ma].applyOptions({visible: S.showMA[ma]});
+  });
+});
+
+// ─────────────────────────────────────────────
+// DRAW TOOL
+// ─────────────────────────────────────────────
+$('draw-btn').addEventListener('click',  () => S.drawMode ? exitDraw() : enterDraw());
+$('undo-btn').addEventListener('click',  undoLine);
+$('clear-btn').addEventListener('click', clearLines);
+
+document.querySelectorAll('.cdot').forEach(dot => {
+  dot.addEventListener('click', () => {
+    document.querySelectorAll('.cdot').forEach(d => d.classList.remove('sel'));
+    dot.classList.add('sel');
+    S.drawColor = dot.dataset.color;
+  });
+});
+
+// ─────────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    S.tab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    $('tab-'+tab).classList.add('active');
+    if (tab==='chart'   && !S.chartLoaded)   loadChart(S.ticker, S.pidx);
+    if (tab==='news'    && !S.newsLoaded)    loadNews(S.ticker);
+    if (tab==='filings' && !S.filingsLoaded) loadFilings(S.ticker);
+  });
+});
+
+// ─────────────────────────────────────────────
+// RETRY / INPUT
+// ─────────────────────────────────────────────
+$('ov-retry').addEventListener('click', () => loadPrice(S.ticker));
+$('ch-retry').addEventListener('click', () => loadChart(S.ticker, S.pidx));
+$('nw-retry').addEventListener('click', () => loadNews(S.ticker));
+$('fi-retry').addEventListener('click', () => loadFilings(S.ticker));
+$('fetch-btn').addEventListener('click', doFetch);
+$('ticker-input').addEventListener('keydown', e => { if (e.key==='Enter') doFetch(); });
+
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+loadPrice('AAPL');
+</script>
+</body>
+</html>
